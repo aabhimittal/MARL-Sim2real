@@ -26,9 +26,12 @@ def main() -> None:
     ap.add_argument("--bin", type=int, nargs=3, default=[8, 8, 8], metavar=("L", "W", "H"))
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", type=str, default="artifacts")
+    ap.add_argument("--accept-util", type=float, default=0.15,
+                    help="minimum real-world utilization to export")
     args = ap.parse_args()
 
-    bridge = Sim2RealBridge(bin_size=tuple(args.bin), seed=args.seed)
+    bridge = Sim2RealBridge(bin_size=tuple(args.bin), seed=args.seed,
+                            acceptance_utilization=args.accept_util)
     result = bridge.run(sim_episodes=args.sim_episodes, adapt_episodes=args.adapt_episodes)
 
     print("\n=== Sim2Real summary ===")
