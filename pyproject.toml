@@ -1,14 +1,17 @@
 [project]
-name = "marl-packing-sim2real"
-version = "0.1.0"
-description = "Multi-agent RL bin packing (Packer + Physics agents) with a PyBullet Sim2Real MLOps loop and Champion/Challenger deployment."
+name = "marl-sim2real"
+version = "0.3.0"
+description = "Multi-agent RL bin packing (Packer + Physics agents) with a PyBullet Sim2Real MLOps loop, Champion/Challenger deployment, dynamic GNN path optimization with k-sigma drift self-correction, and a vector-graph semantic cache."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 
+[project.optional-dependencies]
+llm = ["anthropic>=0.40"]
+
 [tool.setuptools.packages.find]
 where = ["src", "."]
-include = ["marl_packing*", "semantic_cache*"]
+include = ["marl_packing*", "marl_sim2real*", "semantic_cache*"]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

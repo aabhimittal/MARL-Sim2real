@@ -1,0 +1,47 @@
+# Default configuration for the marl_sim2real package — every value mirrors
+# marl_sim2real/config.py. Override any subset; unspecified keys keep their
+# code defaults.
+#
+# The src/marl_packing MLOps track is configured by the other YAML files in
+# this directory (env.yaml, train_packer.yaml, train_physics.yaml,
+# challenger_eval.yaml).
+
+packing:
+  bin_size: [10, 10, 10]
+  cell_size: 0.05
+  max_items: 12
+  min_item_dim: 2
+  max_item_dim: 5
+
+physics:
+  gravity: -9.81
+  sim_steps: 120
+  timestep: 0.004166667
+  max_displacement: 0.02
+  max_tilt_deg: 10.0
+
+train:
+  episodes: 200
+  lr: 0.0003
+  gamma: 0.99
+  entropy_coef: 0.01
+  seed: 7
+
+gnn:
+  hidden_dim: 64
+  num_layers: 3
+  lr: 0.001
+  node_feat_dim: 4
+  edge_feat_dim: 3
+
+drift:
+  k_sigma: 3.0          # trigger threshold: |real - sim_mean| > k * sim_std
+  window_size: 30
+  min_samples: 10
+  recalib_steps: 50
+  bias_lr: 0.1
+  ema_alpha: 0.2
+
+router:
+  low_threshold: 0.33
+  high_threshold: 0.66

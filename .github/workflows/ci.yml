@@ -9,6 +9,7 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,8 +21,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
-      - name: Install dependencies
+      - name: Install dependencies (CPU torch)
         run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
           pip install -e .
 
@@ -34,6 +36,7 @@ jobs:
   smoke-pipeline:
     needs: lint-and-test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,8 +48,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
-      - name: Install dependencies
+      - name: Install dependencies (CPU torch)
         run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
           pip install -e .
 
@@ -59,3 +63,6 @@ jobs:
 
       - name: Evaluate challenger against promotion gate
         run: bash scripts/run_challenger_eval.sh "${{ steps.smoke_train.outputs.version_id }}"
+
+      - name: Smoke-test marl_sim2real end-to-end pipeline
+        run: python scripts/run_pipeline.py

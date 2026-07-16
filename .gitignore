@@ -21,6 +21,11 @@ models/registry/*/
 checkpoints/
 runs/
 artifacts/
+data/
+*.pt
 *.npz
+*.jsonl
 *.log
+.env
 .DS_Store
+models/registry/registry.json
