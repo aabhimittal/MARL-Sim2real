@@ -46,10 +46,29 @@ semantic_cache/
   graph_store.py               # sequential/entity/semantic edges + spreading activation
   hybrid_retriever.py          # vector seeds → graph expansion → context clusters
   cache_manager.py             # SemanticCache facade with score-based eviction
-scripts/                       # train.py, evaluate.py, demo_cache.py
+marl_sim2real/                 # second implementation track — see below
+  env/                         # heightmap bin-packing env + parameterized stability engine
+  agents/                      # REINFORCE proposer (top-K) + learned physics critic
+  training/                    # co-training loop with physics replay buffer
+  sim2real/                    # domain randomization, real-cell stub, CEM calibration, 5-stage bridge
+  export/                      # .npz + SHA-256-verified manifest bundle for edge deployment
+scripts/                       # train.py, evaluate.py, demo_cache.py, train_sim2real.py, run_bridge.py
 tests/                         # pytest suite (runs in CI without torch/pybullet)
 docs/ARCHITECTURE.md           # design decisions and data flow in depth
+docs/MARL_SIM2REAL.md          # step-by-step guide to the marl_sim2real track
 ```
+
+### Two implementation tracks
+
+This repo hosts two complementary implementations of the same Proposer/Physics
+MARL idea:
+
+| | `marl_packing` (below) | `marl_sim2real` ([docs/MARL_SIM2REAL.md](docs/MARL_SIM2REAL.md)) |
+|---|---|---|
+| Policy training | PPO-lite + GAE, masked softmax | REINFORCE + baseline, top-K proposal/veto negotiation |
+| Sim2Real | adaptive randomization + critic fine-tune | CEM system identification from real placement logs |
+| Extras | vector-graph semantic cache for ultra-long contexts | hash-verified `.npz`+JSON edge export consumed by the **EdgePack** repo (registry / OTA rollout) |
+| Entry points | `scripts/train.py`, `scripts/evaluate.py` | `scripts/train_sim2real.py`, `scripts/run_bridge.py` |
 
 ## Quick start
 

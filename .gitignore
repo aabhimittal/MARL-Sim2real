@@ -9,5 +9,6 @@ venv/
 .coverage
 checkpoints/
 runs/
+artifacts/
 *.npz
 .DS_Store

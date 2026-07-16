@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marl-sim2real"
-version = "0.1.0"
-description = "Multi-Agent RL bin packing with a Physics Agent stability critic, a Sim2Real bridge, and a vector-graph hybrid semantic cache for ultra-long contexts."
+version = "0.2.0"
+description = "Multi-Agent RL bin packing with a Physics Agent stability critic, a Sim2Real bridge (PPO and REINFORCE+CEM variants), a vector-graph hybrid semantic cache, and framework-free edge policy export."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -18,7 +18,7 @@ physics = ["pybullet>=3.2"]
 dev = ["pytest>=7.0", "pytest-cov"]
 
 [tool.setuptools.packages.find]
-include = ["marl_packing*", "semantic_cache*"]
+include = ["marl_packing*", "semantic_cache*", "marl_sim2real*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
