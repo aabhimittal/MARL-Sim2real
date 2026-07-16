@@ -45,8 +45,8 @@ class DomainRandomizer:
 
     def __init__(self, env: PackingEnv, config: Optional[RandomizationConfig] = None):
         self.env = env
-        self.cfg = config or RandomizationConfig()
-        self._rng = np.random.default_rng(self.cfg.seed)
+        self.rand_cfg = config or RandomizationConfig()
+        self._rng = np.random.default_rng(self.rand_cfg.seed)
         self._episode_support_shift = 0.0
 
     # Delegate everything the agents use straight through.
@@ -55,7 +55,7 @@ class DomainRandomizer:
 
     def reset(self, box_sequence=None) -> Dict:
         obs = self.env.reset(box_sequence)
-        self._episode_support_shift = self._rng.normal(0.0, self.cfg.support_shift_std)
+        self._episode_support_shift = self._rng.normal(0.0, self.rand_cfg.support_shift_std)
         self._perturb_boxes()
         return self._noisy_obs(self.env.observe())
 
@@ -82,13 +82,13 @@ class DomainRandomizer:
         for dims in self.env.boxes:
             dims = list(dims)
             for k in range(3):
-                if self._rng.random() < self.cfg.dim_tolerance:
+                if self._rng.random() < self.rand_cfg.dim_tolerance:
                     dims[k] = int(np.clip(dims[k] + self._rng.choice([-1, 1]), 1, None))
             boxes.append(tuple(dims))
         self.env.boxes = boxes
 
     def _jitter_action(self, action: int) -> int:
-        if self._rng.random() >= self.cfg.placement_jitter:
+        if self._rng.random() >= self.rand_cfg.placement_jitter:
             return action
         x, y, o = self.env.decode_action(action)
         x = int(np.clip(x + self._rng.choice([-1, 1]), 0, self.env.W - 1))
@@ -96,6 +96,6 @@ class DomainRandomizer:
         return self.env.encode_action(x, y, o)
 
     def _noisy_obs(self, obs: Dict) -> Dict:
-        noise = self._rng.normal(0.0, self.cfg.obs_noise_std, obs["heightmap"].shape)
+        noise = self._rng.normal(0.0, self.rand_cfg.obs_noise_std, obs["heightmap"].shape)
         noisy = np.clip(np.round(obs["heightmap"] + noise), 0, self.env.H)
         return {**obs, "heightmap": noisy.astype(obs["heightmap"].dtype)}
