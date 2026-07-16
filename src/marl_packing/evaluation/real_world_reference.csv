@@ -1,0 +1,13 @@
+# ILLUSTRATIVE PLACEHOLDER DATA -- not measurements from a real warehouse or rig.
+#
+# This repo has no physical packing cell to benchmark against (see docs/SIM2REAL.md), so
+# this file stands in for wherever your real box-utilization measurements would go. The
+# numbers below are round, plausible targets loosely informed by published bin-packing /
+# palletizing utilization ranges (typically ~65-85% for mixed-carton loads), NOT audited
+# real-world data. Replace this file's contents with your own measurements to make the
+# Sim2Real benchmark in evaluation/benchmark.py meaningful.
+#
+scenario_id,description,target_box_utilization_pct
+mixed_small_boxes,"Mixed small cartons (0.10-0.30m per side)",72.0
+uniform_medium_boxes,"Mostly uniform medium cartons",80.0
+irregular_load,"High size variance, irregular load",65.0
