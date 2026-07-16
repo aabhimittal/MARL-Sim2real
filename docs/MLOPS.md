@@ -236,3 +236,29 @@ outside the local registry directory. Wiring a real deployment target (e.g.
 triggering a rollout against a serving endpoint keyed off
 `registry.get_champion().packer_path` / `.physics_path`) is the natural next
 step this module is a placeholder for.
+
+## 5. Export bundle: the actual handoff artifact (`mlops/export.py`)
+
+`set_champion()` alone leaves the promoted checkpoints sitting in
+`models/registry/<version>/` — not something a serving system, OTA updater,
+or edge device could consume on its own. `--export-bundle DIR` on
+`deploy.py` closes that gap: on a successful promotion, it also calls
+`export_bundle(registry.get_version(challenger_id), DIR)`, which copies
+`packer.zip`/`physics.zip` into `DIR` alongside a `manifest.json` carrying:
+
+- `version`, `created_at`, `train_config_hash`, and the version's evaluation
+  `metrics` (the same fields as the registry entry, so the bundle is
+  self-describing without needing the registry present);
+- a per-file `sha256` under `files.packer` / `files.physics`.
+
+```
+python -m marl_packing.mlops.deploy --challenger v3 --auto-promote \
+    --export-bundle artifacts/packing_policy_v3
+```
+
+`verify_bundle(manifest_path)` recomputes each file's hash and compares it
+against the manifest — call it on the receiving end (or right before loading
+the bundle into a serving process) to catch corruption or tampering in
+transit. This is the concrete artifact a real deployment pipeline would pick
+up and push to production; `mlops/deploy.py` itself still stops at producing
+it, per the local-registry-swap scope described above.

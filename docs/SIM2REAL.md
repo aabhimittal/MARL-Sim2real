@@ -158,3 +158,36 @@ To make this file (and by extension, any comparison against it) meaningful:
 Until those steps happen, treat every "Sim2Real gap" number this repo
 produces as a *simulator-only robustness proxy*, not a validated real-world
 performance guarantee.
+
+## Calibrating `real_proxy` from real data: `evaluation/calibration.py`
+
+Step 3 above ("tighten the ranges to match measured physical variation") has
+a concrete mechanism rather than being purely manual: `calibrate()` fits the
+`DropSimulator` physics point (friction, mass_scale, restitution) that best
+reproduces a set of observed real placement outcomes, using the
+Cross-Entropy Method (CEM) — a derivative-free search well suited to this
+objective (agreement-with-logs is discrete and noisy, so there's no useful
+gradient through the physics engine to follow).
+
+Collect `PlacementLog`s from a real cell (or an operator's scripted trial
+run) — each one records the stack it was dropped onto, the candidate box,
+and whether it was actually stable:
+
+```python
+from marl_packing.evaluation.calibration import PlacementLog, calibrate
+from marl_packing.envs.pybullet_sim import PlacedBox
+
+logs = [
+    PlacementLog(existing_boxes=[...], candidate=PlacedBox(position=..., dims=...), stable=True),
+    # ...one per real placement attempt...
+]
+result = calibrate(logs, env_config, iterations=8, population=24)
+print(result.params, result.agreement)  # CalibratedParams(friction=..., mass_scale=..., restitution=...)
+```
+
+`result.params.as_randomization_profile()` returns a degenerate (zero-width)
+domain-randomization profile pinned to the calibrated point — usable
+directly as a data-grounded `real_proxy` in place of the current hand-picked
+range, or as a center to build a calibrated range around. `result.history`
+tracks the best-agreement-so-far per CEM iteration, useful for checking the
+search actually converged before trusting the result.

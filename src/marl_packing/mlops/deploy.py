@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 
 from marl_packing.mlops.challenger import GateResult, evaluate_challenger
+from marl_packing.mlops.export import export_bundle
 from marl_packing.mlops.registry import ModelRegistry
 from marl_packing.utils.config import load_config
 from marl_packing.utils.logging import get_logger
@@ -47,6 +48,11 @@ def main() -> None:
     parser.add_argument("--config", default="configs/challenger_eval.yaml")
     parser.add_argument("--physics-config", default="configs/train_physics.yaml")
     parser.add_argument("--auto-promote", action="store_true")
+    parser.add_argument(
+        "--export-bundle",
+        metavar="DIR",
+        help="On promotion, also export a self-contained, hash-verified deployment bundle to this directory.",
+    )
     args = parser.parse_args()
 
     registry = ModelRegistry(args.registry_dir)
@@ -63,6 +69,9 @@ def main() -> None:
         if args.auto_promote:
             registry.set_champion(args.challenger)
             logger.info("Promoted %s to champion.", args.challenger)
+            if args.export_bundle:
+                manifest_path = export_bundle(registry.get_version(args.challenger), args.export_bundle)
+                logger.info("Exported deployment bundle -> %s", manifest_path)
         else:
             logger.info("Challenger %s passes the gate but --auto-promote was not set; not promoting.", args.challenger)
     else:
