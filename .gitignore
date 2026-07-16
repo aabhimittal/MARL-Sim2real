@@ -28,3 +28,4 @@ data/
 *.log
 .env
 .DS_Store
+models/registry/registry.json
