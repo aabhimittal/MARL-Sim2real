@@ -1,20 +1,20 @@
 # MARL-Sim2real
 
 Multi-Agent Reinforcement Learning for 3D bin packing with physics-validated
-stability, a Sim2Real bridge, real-time GNN path optimization, and
-token-optimised LLM tooling. The repository contains **two complementary
-tracks** that share the same core ideas:
+stability and Sim2Real transfer. The repository contains **two complementary
+tracks** plus a standalone semantic-cache module:
 
 | Track | Packages | Stack | Focus |
 |---|---|---|---|
-| **A — Full pipeline** | `marl_sim2real/` | torch + PyBullet + networkx | MARL packing → PyBullet ideal traffic data → dynamic GNN path optimization → k-sigma drift detection → GNN self-correction → complexity-routed LLM calls |
-| **B — Numpy-only core** | `marl_packing/`, `semantic_cache/` | numpy (PyBullet optional) | PPO-lite MARL packing with a learned veto critic, domain randomization, reality-gap calibration, and a vector-graph semantic cache for ultra-long LLM contexts |
+| **A — Drift-correction pipeline** | `marl_sim2real/` | torch + PyBullet + networkx | MARL packing → PyBullet ideal traffic data → dynamic GNN path optimization → k-sigma drift detection → GNN self-correction → complexity-routed LLM calls |
+| **B — MLOps training loop** | `src/marl_packing/` | SB3 + PettingZoo + PyBullet + MLflow | Packer/Physics agents trained with alternating independent-learner PPO, domain-randomized real-world proxy benchmark, MLflow tracking + model registry with a Champion/Challenger promotion gate |
+| — | `semantic_cache/` | numpy | vector-graph hybrid retrieval: feeds long-context LLM calls only the relevant *context clusters* |
 
-Both tracks run headless and are exercised by the same CI (`python -m pytest tests/ -q`).
+Both tracks run headless on CPU and share one CI (`pytest tests -q`).
 
 ---
 
-# Track A — `marl_sim2real`: the end-to-end pipeline
+# Track A — `marl_sim2real`: the drift-correction pipeline
 
 Four systems chained together:
 
@@ -52,13 +52,13 @@ flowchart LR
     D -->|event severity| L[4 · Complexity Router<br/>Haiku / Sonnet / Opus]
 ```
 
-## Quickstart
+## Quickstart (Track A)
 
 ```bash
-pip install -e ".[dev]"          # numpy, torch, pybullet, networkx, pyyaml, pytest
+pip install -r requirements.txt && pip install -e .
 python -m pytest tests/ -q       # full test suite, both tracks
 
-python scripts/run_pipeline.py   # compact end-to-end demo of every stage
+python scripts/run_pipeline.py   # compact end-to-end demo of every Track A stage
 ```
 
 Stage-by-stage (full-size runs):
@@ -71,9 +71,10 @@ python scripts/monitor_drift.py --ticks 120 --k 3  # 3. live drift monitoring + 
 
 Everything degrades gracefully: without PyBullet a heuristic physics fallback is
 used, and without `ANTHROPIC_API_KEY` the router returns deterministic offline
-stubs — so the whole pipeline runs in CI.
+stubs — so the whole pipeline runs in CI. Track A knobs live in
+`configs/default.yaml`, mirroring `marl_sim2real/config.py`.
 
-## Step-by-step implementation guide
+## Step-by-step implementation guide (Track A)
 
 This section walks through how Track A is built, in the order you would build
 it yourself.
@@ -209,77 +210,85 @@ API; otherwise a deterministic offline stub keeps the pipeline self-contained.
 
 ---
 
-# Track B — `marl_packing` + `semantic_cache`: the numpy-only core
+# Track B — `src/marl_packing`: the MLOps training loop
 
-An independent implementation of the MARL packing idea that runs on **numpy
-alone** — no torch, no GPU, no API keys — plus a graph-based semantic cache:
+A **packer** agent proposes box positions and orientations, and a **physics**
+agent accepts or rejects each proposal, with PyBullet drop simulation as the
+ground truth for stack stability. The two agents are trained with alternating
+independent-learner PPO (Stable-Baselines3) on a PettingZoo `AECEnv`. Sim2Real
+transfer is measured against a domain-randomized "real-world proxy" benchmark,
+and an MLOps loop (MLflow tracking + a local JSON model registry) gates
+deployment through a Champion/Challenger promotion gate.
 
-- `marl_packing/` — a voxel-grid packing env where the environment doesn't
-  decide stability itself: a **PPO-lite Proposer** (numpy MLP with manual
-  backprop) proposes placements and a **Physics Agent** (stability rules + a
-  learned critic, optional PyBullet backend) can **veto** them. The Sim2Real
-  side does train-time **domain randomization**, a **RealityGapCalibrator**
-  that widens randomization and fine-tunes the critic from paired sim/real
-  outcomes, and a deployment **bridge** with a digital twin and safety filter.
-- `semantic_cache/` — a vector-graph hybrid for ultra-long LLM contexts:
-  overlapping chunks are indexed in a cosine vector store *and* wired into a
-  graph (sequential/entity/semantic edges); retrieval seeds spreading
-  activation from vector hits and returns coherent *context clusters* instead
-  of isolated top-k chunks.
+## Quickstart (Track B)
 
 ```bash
-python scripts/train.py --episodes 200 --randomize   # train both agents (numpy)
-python scripts/evaluate.py                           # sim eval + sim2real deployment
-python scripts/demo_cache.py                         # semantic cache walkthrough
+pip install -r requirements.txt && pip install -e .   # or: make setup
+
+make test             # run the shared test suite
+make smoke-train      # fast CPU smoke run: env -> agents -> PPO -> MLflow -> registry
+make challenger-eval  # run a challenger through the promotion gate
+make mlflow-ui        # browse MLflow runs
 ```
 
-Design decisions and data flow in depth: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-Tunables reference: [configs/marl_packing_reference.yaml](configs/marl_packing_reference.yaml).
+Other targets: `make lint` (ruff), `make train` (full-scale timesteps),
+`make promote CHALLENGER=<version_id>`, `make clean`.
+
+## Track B documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system overview and how the pieces fit together
+- [docs/MARL_DESIGN.md](docs/MARL_DESIGN.md) — the two-agent design and alternating training scheme
+- [docs/SIM2REAL.md](docs/SIM2REAL.md) — domain randomization and the real-world proxy benchmark
+- [docs/MLOPS.md](docs/MLOPS.md) — MLflow tracking, model registry, and the Champion/Challenger gate
+
+## Scope and limitations (Track B)
+
+- Training runs are deliberately short CPU smoke runs
+  (`smoke_timesteps_per_round: 256`) that verify the pipeline end-to-end; no
+  model quality claims are made. `make train` runs the full-scale schedule if
+  you have the compute.
+- There is no physical robot or camera rig. The "real-world" benchmark is a
+  domain-randomization proxy — the same simulator with wider
+  friction/mass/restitution ranges and pose noise (`real_proxy` in
+  `configs/env.yaml`) — and
+  `src/marl_packing/evaluation/real_world_reference.csv` is an illustrative
+  placeholder, not genuine field data. See [docs/SIM2REAL.md](docs/SIM2REAL.md).
+
+---
+
+# Also in this repository: a semantic cache module
+
+`semantic_cache/` is an unrelated, separately-developed feature: a vector-graph
+hybrid retrieval cache for feeding long-context LLM calls only the relevant
+*context clusters* out of an ultra-long context (chunking + a cosine vector
+index + a chunk graph with spreading-activation retrieval + score-based
+eviction). It has no dependency on the packing/MARL code. See
+`semantic_cache/cache_manager.py` for the `SemanticCache` facade and
+`scripts/demo_cache.py` for a runnable walkthrough; its tests live in
+`tests/test_cache.py`.
 
 ---
 
 ## Repository layout
 
 ```
-marl_sim2real/                 # Track A (torch + PyBullet)
-├── config.py                  # dataclass config + YAML overrides
-├── envs/packing_env.py        # heightmap bin-packing environment
-├── agents/                    # REINFORCE proposer, PyBullet judge, MARL coordinator
-├── gnn/                       # dynamic message-passing GNN + Dijkstra optimizer
-├── sim2real/                  # ideal data gen, k-sigma detector, self-correction
-└── llm/complexity_router.py   # model switching + savings report
-marl_packing/                  # Track B (numpy PPO + veto critic + sim2real bridge)
-semantic_cache/                # Track B (vector-graph hybrid retrieval)
-scripts/                       # Track A: train_marl, generate_sim_data, monitor_drift,
-                               #          run_pipeline · Track B: train, evaluate, demo_cache
-configs/                       # default.yaml (Track A) · marl_packing_reference.yaml (Track B)
-docs/ARCHITECTURE.md           # Track B design document
-tests/                         # combined pytest suite for both tracks
+marl_sim2real/            Track A: config, packing env, REINFORCE proposer, PyBullet
+                          judge, MARL coordinator, dynamic GNN + Dijkstra optimizer,
+                          ideal-data generator, k-sigma drift detector, self-correction,
+                          complexity router
+src/marl_packing/         Track B: PettingZoo AECEnv, PyBullet drop simulator, domain
+                          randomization, SB3 wrappers, alternating PPO training loop,
+                          paired-seed benchmark, MLflow + registry + challenger gate
+semantic_cache/           vector-graph hybrid retrieval cache
+scripts/                  Track A: train_marl, generate_sim_data, monitor_drift,
+                          run_pipeline · Track B: run_smoke_train.sh,
+                          run_challenger_eval.sh, visualize_packing · demo_cache
+configs/                  default.yaml (Track A) · env.yaml, train_packer.yaml,
+                          train_physics.yaml, challenger_eval.yaml (Track B)
+docs/                     Track B design documents
+models/registry/          local JSON model registry (weights untracked)
+tests/                    combined pytest suite for both tracks + semantic cache
 ```
-
-## Configuration
-
-Track A knobs live in `configs/default.yaml` and map 1:1 onto the dataclasses
-in `marl_sim2real/config.py`. The most important ones:
-
-- `drift.k_sigma` — the detection threshold *k* (default 3.0)
-- `drift.window_size` / `min_samples` — reactivity vs robustness trade-off
-- `drift.bias_lr` / `recalib_steps` — how aggressively self-correction moves
-- `router.low_threshold` / `high_threshold` — model-switching boundaries
-
-Track B is configured via CLI flags and constructor arguments; see
-`configs/marl_packing_reference.yaml` for the documented defaults.
-
-## Extending
-
-- Swap REINFORCE for PPO/QMIX in `marl_sim2real/agents/proposer_agent.py`
-  (the coordinator API doesn't change) — or study `marl_packing/training/`
-  for a PPO-lite reference.
-- Replace `RealWorldSimulator` with a ROS/MQTT subscriber feeding real robot
-  telemetry into `DriftDetector.update()`.
-- Load real warehouse layouts into `WarehouseGraph` instead of the
-  random-geometric generator.
-- Point `semantic_cache`'s pluggable embedder at a real embedding model.
 
 ## License
 

@@ -1,17 +1,30 @@
 __pycache__/
 *.py[cod]
+.venv/
+venv/
 *.egg-info/
 build/
 dist/
+
+# MLflow local tracking store
+mlruns/
+mlartifacts/
+
+# Model registry checkpoints (metadata schema is tracked, weights are not)
+models/registry/*/
+!models/registry/.gitkeep
+
+# Misc
 .pytest_cache/
+.ruff_cache/
 .coverage
 checkpoints/
 runs/
+artifacts/
 data/
 *.pt
 *.npz
 *.jsonl
-.venv/
-venv/
+*.log
 .env
 .DS_Store

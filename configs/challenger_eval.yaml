@@ -1,0 +1,15 @@
+# Champion/Challenger promotion gate.
+# A challenger is promoted only if ALL conditions hold, evaluated on identical
+# paired benchmark episodes (same seeds) for both models.
+
+num_eval_episodes: 20
+eval_seed_base: 1000
+
+promotion_gate:
+  min_utilization_improvement_pct: 1.0   # challenger box-utilization must exceed champion by >= this many percentage points
+  max_stability_regression_pct: 2.0      # challenger stability success rate may fall at most this many points below champion
+  max_sim2real_gap_regression_pct: 3.0   # challenger's (sim - real_proxy) utilization gap may widen by at most this many points vs champion's gap
+
+# If no champion exists yet (bootstrap case), the first evaluated challenger
+# with a non-negative sim2real gap regression check disabled is auto-promoted.
+bootstrap_auto_promote: true

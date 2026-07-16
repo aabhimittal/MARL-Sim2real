@@ -25,7 +25,7 @@ def test_training_reduces_loss():
     for _ in range(6):
         nf, ef = graph.sample_features()
         snapshots.append((nf, ef))
-        targets.append((2.0 + 3.0 * ef[:, 0] + rng.normal(0, 0.05, graph.num_edges)))
+        targets.append(2.0 + 3.0 * ef[:, 0] + rng.normal(0, 0.05, graph.num_edges))
     losses = gnn.fit(snapshots, targets, epochs=30)
     assert losses[-1] < losses[0]
 

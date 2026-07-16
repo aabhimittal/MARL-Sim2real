@@ -1,7 +1,7 @@
 import pytest
 
-from marl_sim2real.config import PackingConfig, PhysicsConfig
 from marl_sim2real.agents.physics_agent import PYBULLET_AVAILABLE, PhysicsAgent
+from marl_sim2real.config import PackingConfig, PhysicsConfig
 from marl_sim2real.envs import PackingEnv
 from marl_sim2real.envs.packing_env import Item, Placement
 

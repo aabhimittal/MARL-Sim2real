@@ -2,8 +2,9 @@
 # marl_sim2real/config.py. Override any subset; unspecified keys keep their
 # code defaults.
 #
-# The marl_packing / semantic_cache tunables are documented separately in
-# configs/marl_packing_reference.yaml (those scripts take CLI flags instead).
+# The src/marl_packing MLOps track is configured by the other YAML files in
+# this directory (env.yaml, train_packer.yaml, train_physics.yaml,
+# challenger_eval.yaml).
 
 packing:
   bin_size: [10, 10, 10]
