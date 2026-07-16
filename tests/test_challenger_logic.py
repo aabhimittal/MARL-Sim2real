@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from marl_packing.mlops.challenger import EvalReport, decide_promotion
 
 GATE = {

@@ -4,8 +4,8 @@ import pytest
 
 from marl_packing.evaluation.metrics import (
     box_utilization_pct,
-    stability_success_rate_pct,
     sim2real_gap_pct,
+    stability_success_rate_pct,
 )
 
 

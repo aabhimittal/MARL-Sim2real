@@ -250,7 +250,7 @@ class PackingEnv(AECEnv):
         self.infos["packer"] = {"outcome": outcome, "item_frac_volume": item_frac_volume}
         self.infos["physics"] = {"outcome": outcome, "item_frac_volume": item_frac_volume}
 
-    def _commit_placement(self, pp: "_PendingPlacement") -> None:
+    def _commit_placement(self, pp: _PendingPlacement) -> None:
         ix0, ix1, iy0, iy1 = pp.footprint_cells
         top_z = pp.base_z + pp.dims[2]
         self._heightmap[ix0:ix1, iy0:iy1] = top_z
