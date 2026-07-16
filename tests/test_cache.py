@@ -10,7 +10,6 @@ from semantic_cache.chunker import Chunk, chunk_text
 from semantic_cache.graph_store import GraphStore
 from semantic_cache.vector_store import HashingEmbedder, VectorStore
 
-
 # ------------------------------------------------------------------------ chunker
 
 
