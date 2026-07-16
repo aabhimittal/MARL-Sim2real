@@ -1,5 +1,5 @@
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
 venv/
 *.egg-info/
@@ -17,5 +17,9 @@ models/registry/*/
 # Misc
 .pytest_cache/
 .ruff_cache/
+.coverage
+checkpoints/
+runs/
+*.npz
 *.log
 .DS_Store

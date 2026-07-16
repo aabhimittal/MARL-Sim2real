@@ -55,3 +55,11 @@ tests/                    pytest suite (env, metrics, registry, challenger gate 
 
 - Training runs here are deliberately short CPU smoke runs (`smoke_timesteps_per_round: 256`) that verify the pipeline end-to-end; this project was built in a dev environment without a GPU or budget for long training, so no model quality claims are made. `make train` runs the full-scale schedule if you have the compute.
 - There is no physical robot or camera rig. The "real-world" benchmark is a domain-randomization proxy — the same simulator with wider friction/mass/restitution ranges and pose noise (`real_proxy` in `configs/env.yaml`) — and `src/marl_packing/evaluation/real_world_reference.csv` is an illustrative placeholder, not genuine field data. See [docs/SIM2REAL.md](docs/SIM2REAL.md) for details.
+
+## Also in this repository: a semantic cache module
+
+`semantic_cache/` is an unrelated, separately-developed feature that also lives in this repo: a vector-graph hybrid retrieval cache for feeding long-context LLM calls only the relevant *context clusters* out of an ultra-long context (chunking + a cosine vector index + a chunk graph with spreading-activation retrieval + score-based eviction). It has no dependency on the packing/MARL code above. See `semantic_cache/cache_manager.py` for the `SemanticCache` facade and `scripts/demo_cache.py` for a runnable walkthrough; its tests live in `tests/test_cache.py`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
