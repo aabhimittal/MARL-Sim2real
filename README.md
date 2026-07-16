@@ -1,6 +1,22 @@
 # MARL-Sim2real
 
-An end-to-end research prototype combining four systems:
+Multi-Agent Reinforcement Learning for 3D bin packing with physics-validated
+stability, a Sim2Real bridge, real-time GNN path optimization, and
+token-optimised LLM tooling. The repository contains **two complementary
+tracks** that share the same core ideas:
+
+| Track | Packages | Stack | Focus |
+|---|---|---|---|
+| **A — Full pipeline** | `marl_sim2real/` | torch + PyBullet + networkx | MARL packing → PyBullet ideal traffic data → dynamic GNN path optimization → k-sigma drift detection → GNN self-correction → complexity-routed LLM calls |
+| **B — Numpy-only core** | `marl_packing/`, `semantic_cache/` | numpy (PyBullet optional) | PPO-lite MARL packing with a learned veto critic, domain randomization, reality-gap calibration, and a vector-graph semantic cache for ultra-long LLM contexts |
+
+Both tracks run headless and are exercised by the same CI (`python -m pytest tests/ -q`).
+
+---
+
+# Track A — `marl_sim2real`: the end-to-end pipeline
+
+Four systems chained together:
 
 1. **Multi-Agent RL packing** — a *Proposer Agent* learns to propose 3D packing
    orientations; a *Physics Agent* validates every proposal by dropping the item
@@ -36,13 +52,11 @@ flowchart LR
     D -->|event severity| L[4 · Complexity Router<br/>Haiku / Sonnet / Opus]
 ```
 
----
-
 ## Quickstart
 
 ```bash
 pip install -e ".[dev]"          # numpy, torch, pybullet, networkx, pyyaml, pytest
-python -m pytest tests/ -q       # 27 tests, ~5 s
+python -m pytest tests/ -q       # full test suite, both tracks
 
 python scripts/run_pipeline.py   # compact end-to-end demo of every stage
 ```
@@ -59,12 +73,10 @@ Everything degrades gracefully: without PyBullet a heuristic physics fallback is
 used, and without `ANTHROPIC_API_KEY` the router returns deterministic offline
 stubs — so the whole pipeline runs in CI.
 
----
-
 ## Step-by-step implementation guide
 
-This section walks through how the system is built, in the order you would
-build it yourself.
+This section walks through how Track A is built, in the order you would build
+it yourself.
 
 ### Step 1 — The packing environment (`marl_sim2real/envs/packing_env.py`)
 
@@ -197,48 +209,77 @@ API; otherwise a deterministic offline stub keeps the pipeline self-contained.
 
 ---
 
+# Track B — `marl_packing` + `semantic_cache`: the numpy-only core
+
+An independent implementation of the MARL packing idea that runs on **numpy
+alone** — no torch, no GPU, no API keys — plus a graph-based semantic cache:
+
+- `marl_packing/` — a voxel-grid packing env where the environment doesn't
+  decide stability itself: a **PPO-lite Proposer** (numpy MLP with manual
+  backprop) proposes placements and a **Physics Agent** (stability rules + a
+  learned critic, optional PyBullet backend) can **veto** them. The Sim2Real
+  side does train-time **domain randomization**, a **RealityGapCalibrator**
+  that widens randomization and fine-tunes the critic from paired sim/real
+  outcomes, and a deployment **bridge** with a digital twin and safety filter.
+- `semantic_cache/` — a vector-graph hybrid for ultra-long LLM contexts:
+  overlapping chunks are indexed in a cosine vector store *and* wired into a
+  graph (sequential/entity/semantic edges); retrieval seeds spreading
+  activation from vector hits and returns coherent *context clusters* instead
+  of isolated top-k chunks.
+
+```bash
+python scripts/train.py --episodes 200 --randomize   # train both agents (numpy)
+python scripts/evaluate.py                           # sim eval + sim2real deployment
+python scripts/demo_cache.py                         # semantic cache walkthrough
+```
+
+Design decisions and data flow in depth: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Tunables reference: [configs/marl_packing_reference.yaml](configs/marl_packing_reference.yaml).
+
+---
+
 ## Repository layout
 
 ```
-marl_sim2real/
+marl_sim2real/                 # Track A (torch + PyBullet)
 ├── config.py                  # dataclass config + YAML overrides
 ├── envs/packing_env.py        # heightmap bin-packing environment
-├── agents/
-│   ├── proposer_agent.py      # REINFORCE proposer (orientation + position)
-│   ├── physics_agent.py       # PyBullet stability judge (+ heuristic fallback)
-│   └── coordinator.py         # cooperative MARL loop and shared reward
-├── gnn/
-│   ├── dynamic_gnn.py         # message-passing GNN + per-edge calibration bias
-│   └── path_optimizer.py      # Dijkstra over GNN-predicted latencies
-├── sim2real/
-│   ├── ideal_data_generator.py  # PyBullet ideal traffic + real-world simulator
-│   ├── drift_detector.py        # rolling-window k-sigma detection
-│   └── self_correction.py       # baseline EMA + targeted bias fine-tuning
+├── agents/                    # REINFORCE proposer, PyBullet judge, MARL coordinator
+├── gnn/                       # dynamic message-passing GNN + Dijkstra optimizer
+├── sim2real/                  # ideal data gen, k-sigma detector, self-correction
 └── llm/complexity_router.py   # model switching + savings report
-scripts/                       # train_marl, generate_sim_data, monitor_drift, run_pipeline
-configs/default.yaml           # all tunables (k_sigma, window, thresholds, ...)
-tests/                         # 27 unit/integration tests
+marl_packing/                  # Track B (numpy PPO + veto critic + sim2real bridge)
+semantic_cache/                # Track B (vector-graph hybrid retrieval)
+scripts/                       # Track A: train_marl, generate_sim_data, monitor_drift,
+                               #          run_pipeline · Track B: train, evaluate, demo_cache
+configs/                       # default.yaml (Track A) · marl_packing_reference.yaml (Track B)
+docs/ARCHITECTURE.md           # Track B design document
+tests/                         # combined pytest suite for both tracks
 ```
 
 ## Configuration
 
-All knobs live in `configs/default.yaml` and map 1:1 onto the dataclasses in
-`marl_sim2real/config.py`. The most important ones:
+Track A knobs live in `configs/default.yaml` and map 1:1 onto the dataclasses
+in `marl_sim2real/config.py`. The most important ones:
 
 - `drift.k_sigma` — the detection threshold *k* (default 3.0)
 - `drift.window_size` / `min_samples` — reactivity vs robustness trade-off
 - `drift.bias_lr` / `recalib_steps` — how aggressively self-correction moves
 - `router.low_threshold` / `high_threshold` — model-switching boundaries
 
+Track B is configured via CLI flags and constructor arguments; see
+`configs/marl_packing_reference.yaml` for the documented defaults.
+
 ## Extending
 
-- Swap REINFORCE for PPO/QMIX in `proposer_agent.py` (the coordinator API
-  doesn't change).
+- Swap REINFORCE for PPO/QMIX in `marl_sim2real/agents/proposer_agent.py`
+  (the coordinator API doesn't change) — or study `marl_packing/training/`
+  for a PPO-lite reference.
 - Replace `RealWorldSimulator` with a ROS/MQTT subscriber feeding real robot
   telemetry into `DriftDetector.update()`.
 - Load real warehouse layouts into `WarehouseGraph` instead of the
   random-geometric generator.
-- Add per-edge covariates (temperature, floor wear) to the GNN edge features.
+- Point `semantic_cache`'s pluggable embedder at a real embedding model.
 
 ## License
 

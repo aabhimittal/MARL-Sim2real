@@ -1,8 +1,14 @@
-numpy>=1.26
+# marl_sim2real (torch/PyBullet pipeline)
+numpy>=1.24
 torch>=2.2
 pybullet>=3.2
 networkx>=3.2
 PyYAML>=6.0
+
+# marl_packing + semantic_cache run on numpy alone (pybullet optional backend)
+
+# Dev
 pytest>=8.0
-# optional, for real LLM calls in the complexity router:
+
+# Optional, for real LLM calls in the complexity router:
 # anthropic>=0.40

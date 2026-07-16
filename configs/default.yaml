@@ -1,5 +1,9 @@
-# Default configuration — every value mirrors marl_sim2real/config.py.
-# Override any subset; unspecified keys keep their code defaults.
+# Default configuration for the marl_sim2real package — every value mirrors
+# marl_sim2real/config.py. Override any subset; unspecified keys keep their
+# code defaults.
+#
+# The marl_packing / semantic_cache tunables are documented separately in
+# configs/marl_packing_reference.yaml (those scripts take CLI flags instead).
 
 packing:
   bin_size: [10, 10, 10]
