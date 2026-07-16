@@ -1,0 +1,8 @@
+# Core (everything runs with numpy alone)
+numpy>=1.24
+
+# Optional: high-fidelity physics validation backend for the Physics Agent
+# pybullet>=3.2
+
+# Dev
+pytest>=7.0
