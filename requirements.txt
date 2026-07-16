@@ -1,0 +1,8 @@
+numpy>=1.26
+torch>=2.2
+pybullet>=3.2
+networkx>=3.2
+PyYAML>=6.0
+pytest>=8.0
+# optional, for real LLM calls in the complexity router:
+# anthropic>=0.40

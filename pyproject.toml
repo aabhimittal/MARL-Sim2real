@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marl-sim2real"
+version = "0.1.0"
+description = "MARL packing with a PyBullet physics agent, dynamic GNN path optimization, and sim2real drift self-correction"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "torch>=2.2",
+    "pybullet>=3.2",
+    "networkx>=3.2",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.40"]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["marl_sim2real*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
