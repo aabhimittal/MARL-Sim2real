@@ -77,7 +77,7 @@ class Config:
     router: RouterConfig = dataclasses.field(default_factory=RouterConfig)
 
     @classmethod
-    def load(cls, path: str | Path | None = None) -> "Config":
+    def load(cls, path: str | Path | None = None) -> Config:
         cfg = cls()
         if path is None:
             return cfg

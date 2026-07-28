@@ -45,7 +45,7 @@ class SimBaseline:
         }))
 
     @classmethod
-    def load(cls, path: str | Path) -> "SimBaseline":
+    def load(cls, path: str | Path) -> SimBaseline:
         data = json.loads(Path(path).read_text())
         return cls(
             mean=np.asarray(data["mean"], dtype=np.float64),
