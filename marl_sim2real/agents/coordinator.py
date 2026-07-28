@@ -33,6 +33,7 @@ class MARLCoordinator:
     STABILITY_WEIGHT = 0.5
     DENSITY_WEIGHT = 10.0
     REJECT_PENALTY = -0.5
+    CRUSH_PENALTY = -0.75  # crushing cargo is worse than a rejected proposal
 
     def __init__(self, env: PackingEnv, proposer: ProposerAgent, physics: PhysicsAgent):
         self.env = env
@@ -55,6 +56,15 @@ class MARLCoordinator:
             assert placement is not None  # masked sampling guarantees feasibility
 
             report = self.physics.evaluate(self.env, placement)
+            # Load-bearing veto (ConstrainedPackingEnv): stable but crushing
+            # placements are rejected with a stiffer penalty.
+            check_crush = getattr(self.env, "check_crush", None)
+            if report.stable and check_crush is not None and not check_crush(placement).ok:
+                self.proposer.record_reward(self.CRUSH_PENALTY)
+                self.env.skip_item()
+                rejected += 1
+                obs = self.env.observe()
+                continue
             if report.stable:
                 volume_gain = float(np.prod(placement.oriented_dims()))
                 volume_gain /= float(np.prod(self.env.config.bin_size))
