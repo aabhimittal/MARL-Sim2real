@@ -208,6 +208,28 @@ cost against always-using-the-largest-model (the demo shows ~47–93% savings
 depending on the event mix). With `ANTHROPIC_API_KEY` set, calls go to the real
 API; otherwise a deterministic offline stub keeps the pipeline self-contained.
 
+### Industrial hardening (Track A)
+
+Failure modes from real warehouse floors, each with dedicated coverage in
+`tests/test_industrial_edge_cases.py`:
+
+- **Load-bearing / fragility constraints** (`envs/constraints.py`) — every
+  committed placement carries a `CargoSpec` (mass, max load); candidate mass
+  is distributed to direct supporters by overlapping footprint area, and the
+  coordinator vetoes *stable but crushing* placements with a stiffer penalty
+  than a plain rejection. `ConstrainedPackingEnv` samples fragile items so the
+  proposer actually trains against the constraint.
+- **Blocked aisles** (`gnn/path_optimizer.py`) — `block_edge` /
+  `block_between` close aisles (stalled forklift, spill, maintenance);
+  planning reroutes around them, and a disconnected goal raises
+  `NoRouteError` instead of silently reusing a stale route.
+- **Telemetry-grade drift detection** (`sim2real/drift_governor.py`) — the
+  `DriftGovernor` wraps the k-sigma detector for real fleet telemetry: NaN
+  sensor dropouts are filtered per edge (a dead sensor no longer disables
+  fleet-wide detection), window **medians** make single-tick spikes invisible,
+  debounce requires consecutive breaches, and a cooldown stops
+  recalibration thrash on persistently drifted edges.
+
 ---
 
 # Track B — `src/marl_packing`: the MLOps training loop
