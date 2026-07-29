@@ -13,6 +13,16 @@ packing:
   min_item_dim: 2
   max_item_dim: 5
 
+# Industrial constraint envs take these as constructor kwargs (they are not
+# part of PackingConfig): ConstrainedPackingEnv(fragile_fraction, mass_range,
+# fragile_max_load), DeliveryPackingEnv(num_stops), MultiBinPackingEnv(max_bins).
+# Documented defaults:
+#   fragile_fraction: 0.3      # share of items with a finite load rating
+#   mass_range: [0.5, 3.0]     # item mass, distributed onto supporters
+#   fragile_max_load: 2.0      # rating of fragile items
+#   num_stops: 3               # delivery stops for the LIFO unload constraint
+#   max_bins: 6                # pallet budget before items are diverted
+
 physics:
   gravity: -9.81
   sim_steps: 120

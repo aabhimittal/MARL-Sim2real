@@ -219,6 +219,20 @@ Failure modes from real warehouse floors, each with dedicated coverage in
   coordinator vetoes *stable but crushing* placements with a stiffer penalty
   than a plain rejection. `ConstrainedPackingEnv` samples fragile items so the
   proposer actually trains against the constraint.
+- **Multi-stop delivery / LIFO unload order** (`envs/delivery.py`) — every
+  item carries a delivery stop; a placement that would *bury* an item bound
+  for an earlier stop (vertically overhead anywhere over its footprint, direct
+  support or not) is vetoed, because it would have to be dug out and restacked
+  at the dock. `DeliveryPackingEnv` appends the current item's stop to the
+  observation so the proposer learns to keep late-stop freight low.
+- **Multi-bin / pallet rollover** (`envs/multi_bin.py`) — when the current
+  pallet can't take the next carton, `MultiBinPackingEnv` closes it and opens
+  a fresh one (up to `max_bins`); cartons that fit *no* bin are diverted to
+  the manual-handling line rather than silently dropped. KPIs match what a
+  line manager optimizes: bins used, per-bin density, `overall_density()`
+  across every opened pallet, and diverted count (surfaced in
+  `EpisodeStats.diverted`). Stacks all constraints: it extends
+  `DeliveryPackingEnv`, which extends `ConstrainedPackingEnv`.
 - **Blocked aisles** (`gnn/path_optimizer.py`) — `block_edge` /
   `block_between` close aisles (stalled forklift, spill, maintenance);
   planning reroutes around them, and a disconnected goal raises

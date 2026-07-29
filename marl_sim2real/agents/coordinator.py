@@ -27,6 +27,7 @@ class EpisodeStats:
     rejected: int
     mean_stability: float
     loss: float
+    diverted: int = 0  # items that fit no bin at all (manual-handling line)
 
 
 class MARLCoordinator:
@@ -34,6 +35,7 @@ class MARLCoordinator:
     DENSITY_WEIGHT = 10.0
     REJECT_PENALTY = -0.5
     CRUSH_PENALTY = -0.75  # crushing cargo is worse than a rejected proposal
+    LIFO_PENALTY = -0.6    # burying an earlier-stop item means restacking at the dock
 
     def __init__(self, env: PackingEnv, proposer: ProposerAgent, physics: PhysicsAgent):
         self.env = env
@@ -42,13 +44,21 @@ class MARLCoordinator:
 
     def run_episode(self, train: bool = True) -> EpisodeStats:
         obs = self.env.reset()
-        placed = rejected = 0
+        placed = rejected = diverted = 0
         stability_scores: list[float] = []
 
         while not self.env.done():
             mask = ProposerAgent.feasible_mask(self.env)
             if not mask.any():
-                self.env.skip_item()
+                # Multi-bin cells can open a fresh pallet and retry the item.
+                roll = getattr(self.env, "roll_bin_if_useful", None)
+                if roll is not None and roll():
+                    obs = self.env.observe()
+                    continue
+                divert = getattr(self.env, "divert_item", self.env.skip_item)
+                divert()
+                diverted += 1
+                obs = self.env.observe()
                 continue
 
             action = self.proposer.act(obs, mask)
@@ -61,6 +71,15 @@ class MARLCoordinator:
             check_crush = getattr(self.env, "check_crush", None)
             if report.stable and check_crush is not None and not check_crush(placement).ok:
                 self.proposer.record_reward(self.CRUSH_PENALTY)
+                self.env.skip_item()
+                rejected += 1
+                obs = self.env.observe()
+                continue
+            # Unload-order veto (DeliveryPackingEnv): stable but burying an
+            # item bound for an earlier delivery stop.
+            check_order = getattr(self.env, "check_unload_order", None)
+            if report.stable and check_order is not None and not check_order(placement).ok:
+                self.proposer.record_reward(self.LIFO_PENALTY)
                 self.env.skip_item()
                 rejected += 1
                 obs = self.env.observe()
@@ -86,12 +105,14 @@ class MARLCoordinator:
         loss = self.proposer.finish_episode() if train else 0.0
         if not train:
             self.proposer._episode = []
+        overall = getattr(self.env, "overall_density", self.env.packing_density)
         return EpisodeStats(
-            density=self.env.packing_density(),
+            density=float(overall()),
             placed=placed,
             rejected=rejected,
             mean_stability=float(np.mean(stability_scores)) if stability_scores else 0.0,
             loss=loss,
+            diverted=diverted,
         )
 
     def train(self, episodes: int, log_every: int = 10) -> list[EpisodeStats]:
