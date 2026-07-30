@@ -78,3 +78,26 @@ class PathOptimizer:
             ) from exc
         cost = nx.path_weight(g, path, weight="weight")
         return path, float(cost)
+
+    # ------------------------------------------------------------------- SLA
+    def eta_bound(self, path: list, baseline, k: float = 2.0) -> tuple:
+        """Probabilistic ETA promise for a route: (mean_eta, upper_bound).
+
+        Industrial dispatch needs a *deliverable* time window, not a point
+        estimate. Using the sim baseline's per-edge latency variance and
+        treating edges as independent: bound = sum(mu_e) + k * sqrt(sum(var_e))
+        over the first matching edge of each hop. k=2 covers ~97.7% of runs
+        under the normal approximation.
+        """
+        if len(path) < 2:
+            return 0.0, 0.0
+        src, dst = self.graph.edge_index
+        mean_eta = var = 0.0
+        for u, v in zip(path, path[1:]):
+            hits = np.flatnonzero((src == u) & (dst == v))
+            if hits.size == 0:
+                raise ValueError(f"path hop {u}->{v} is not a graph edge")
+            e = int(hits[0])
+            mean_eta += float(baseline.mean[e])
+            var += float(baseline.std[e]) ** 2
+        return mean_eta, mean_eta + k * float(np.sqrt(var))
