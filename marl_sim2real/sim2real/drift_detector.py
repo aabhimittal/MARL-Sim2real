@@ -59,7 +59,9 @@ class DriftDetector:
             return None
 
         window_means = np.array([np.mean(w) for w in self.windows])
-        z = (window_means - self.baseline.mean) / self.baseline.std
+        # Floor sigma: a hand-edited or degenerate baseline (std=0) must not
+        # produce inf/NaN z-scores.
+        z = (window_means - self.baseline.mean) / np.maximum(self.baseline.std, 1e-9)
         drifted = np.flatnonzero(np.abs(z) > self.config.k_sigma)
         if drifted.size == 0:
             return None
